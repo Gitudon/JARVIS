@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
+from googleapiclient.discovery import build
 import asyncio
 import os
+import json
 import requests
 
 TOKEN =  os.getenv("TOKEN")
@@ -16,14 +18,23 @@ client = commands.Bot(
     intents=intent
 )
 
-# youtubeのapiは一日あたり10000回まで。1分1回で1440回なので余裕
-search_url = f"https://www.googleapis.com/youtube/v3/search?key={YOUTUBE_API_KEY}&channelId={YOUTUBE_CHANNEL_ID}&part=id&order=date"
-
 async def get_new_video():
-    response = requests.get(search_url)
-    data = response.json()
-    video_id = data["items"][0]["id"]["videoId"]
-    return video_id
+    try:
+        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        response = youtube.search().list(
+            part = "snippet",
+            channelId = YOUTUBE_CHANNEL_ID,
+            maxResults = 5, 
+            order = "date", 
+            type="video"
+        ).execute()
+        video_ids = []
+        for item in response["items"]:
+            video_ids.append(item["id"]["videoId"])
+        return video_ids
+    except Exception as e:
+        print(e)
+        return "ERROR"
 
 async def send_new_video(new_video):
     channel = client.get_channel(DISCORD_CHANNEL_ID)
@@ -38,16 +49,15 @@ async def test(ctx):
 @client.event
 async def on_ready():
     print("J.A.R.V.I.S. is ready!")
-    latest_video=[]
-    latest_video.append(await get_new_video())
+    latest_video=await get_new_video()
     while True:
-        buf_video = await get_new_video()
-        if buf_video not in latest_video:
-            await send_new_video(buf_video)
-            latest_video.append(buf_video)
+        buf_videos = await get_new_video()
+        if buf_videos != "ERROR":
+            for buf_video in buf_videos:
+                if buf_video not in latest_video:
+                    await send_new_video(buf_video)
+                    latest_video.append(buf_video)
             print(latest_video)
-        if len(latest_video)>=50:
-            latest_video = latest_video[:10]
-        await asyncio.sleep(60)
+        await asyncio.sleep(600)
 
 client.run(TOKEN)
