@@ -3,7 +3,6 @@ from discord.ext import commands
 import asyncio
 import os
 import requests
-from bs4 import BeautifulSoup
 
 TOKEN =  os.getenv("TOKEN")
 DISCORD_CHANNEL_ID= int(os.environ.get("DISCORD_CHANNEL_ID"))
@@ -19,7 +18,6 @@ client = commands.Bot(
 
 # youtubeのapiは一日あたり10000回まで。1分1回で1440回なので余裕
 search_url = f"https://www.googleapis.com/youtube/v3/search?key={YOUTUBE_API_KEY}&channelId={YOUTUBE_CHANNEL_ID}&part=id&order=date"
-latest_video="9r13OIuDcTY"
 
 async def get_new_video():
     response = requests.get(search_url)
@@ -27,14 +25,10 @@ async def get_new_video():
     video_id = data["items"][0]["id"]["videoId"]
     return video_id
 
-async def check_new_video():
+async def send_new_video(new_video):
     channel = client.get_channel(DISCORD_CHANNEL_ID)
-    global latest_video
-    new_video = await get_new_video()
-    if new_video != latest_video:
-        latest_video = [new_video]
-        await channel.send("Sir, I have found a new video!")
-        await channel.send(f"https://www.youtube.com/watch?v={new_video}")
+    await channel.send("Sir, I have found a new video!")
+    await channel.send(f"https://www.youtube.com/watch?v={new_video}")
 
 @client.command()
 async def test(ctx):
@@ -44,9 +38,14 @@ async def test(ctx):
 @client.event
 async def on_ready():
     print("J.A.R.V.I.S. is ready!")
-    print(latest_video)
+    latest_video=""
+    latest_video = await get_new_video()
     while True:
-        await check_new_video()
+        buf_video = await get_new_video()
+        if buf_video != latest_video:
+            await send_new_video(buf_video)
+            latest_video = buf_video
+        print(latest_video)
         await asyncio.sleep(60)
 
 client.run(TOKEN)
