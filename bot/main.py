@@ -38,14 +38,16 @@ async def test(ctx):
 @client.event
 async def on_ready():
     print("J.A.R.V.I.S. is ready!")
-    latest_video=""
-    latest_video = await get_new_video()
+    latest_video=[]
+    latest_video.append(await get_new_video())
     while True:
         buf_video = await get_new_video()
-        if buf_video != latest_video:
+        if buf_video not in latest_video:
             await send_new_video(buf_video)
-            latest_video = buf_video
-        print(latest_video)
+            latest_video.append(buf_video)
+            print(latest_video)
+        if len(latest_video)>=50:
+            latest_video = latest_video[:10]
         await asyncio.sleep(60)
 
 client.run(TOKEN)
