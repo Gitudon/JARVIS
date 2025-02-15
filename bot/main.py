@@ -58,6 +58,6 @@ async def on_ready():
                     await send_new_video(buf_video)
                     latest_video.append(buf_video)
             print(latest_video)
-        await asyncio.sleep(600)
+        await asyncio.sleep(900)
 
 client.run(TOKEN)
