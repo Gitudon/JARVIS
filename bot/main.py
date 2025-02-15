@@ -24,8 +24,8 @@ async def get_new_video():
         response = youtube.search().list(
             part = "snippet",
             channelId = YOUTUBE_CHANNEL_ID,
-            maxResults = 5, 
-            order = "date", 
+            maxResults = 5,
+            order = "date",
             type="video"
         ).execute()
         video_ids = []
