@@ -58,7 +58,6 @@ async def on_ready():
                     await send_new_video(buf_video)
                     latest_video.append(buf_video)
             print(latest_video)
-        #15分おきで様子を見る
-        await asyncio.sleep(900)
+        await asyncio.sleep(600)
 
 client.run(TOKEN)
