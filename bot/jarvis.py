@@ -57,7 +57,6 @@ async def on_ready():
                 if buf_video not in latest_video:
                     await send_new_video(buf_video)
                     latest_video.append(buf_video)
-            print(latest_video)
         await asyncio.sleep(900)
 
 client.run(TOKEN)
