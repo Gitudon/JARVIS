@@ -4,8 +4,6 @@ from googleapiclient.discovery import build
 import mysql.connector
 import asyncio
 import os
-import json
-import requests
 
 TOKEN = os.getenv("TOKEN")
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
@@ -16,13 +14,35 @@ YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
 intent = discord.Intents.default()
 intent.message_content = True
 client = commands.Bot(command_prefix="-", intents=intent)
-conn = mysql.connector.connect(
-    host=os.getenv("DB_HOST"),
-    username=os.getenv("DB_USERNAME"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-)
-cursor = conn.cursor(buffered=True)
+
+
+# MySQLの接続設定
+def get_connection():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+    )
+
+
+async def run_sql(sql: str, params: tuple):
+    conn = get_connection()
+    cursor = conn.cursor(buffered=True)
+    if params != ():
+        cursor.execute(sql, params)
+    else:
+        cursor.execute(sql)
+    if sql.strip().upper().startswith("SELECT"):
+        result = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return result
+    else:
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return
 
 
 async def get_new_videos():
@@ -40,8 +60,10 @@ async def get_new_videos():
             .execute()
         )
         video_urls = []
-        cursor.execute("SELECT url FROM sent_urls WHERE service = 'JARVIS'")
-        sent_urls = cursor.fetchall()
+        sent_urls = await run_sql(
+            "SELECT url FROM sent_urls WHERE service = 'JARVIS'",
+            (),
+        )
         for i in range(len(sent_urls)):
             if type(sent_urls[i]) is tuple:
                 sent_urls[i] = sent_urls[i][0]
@@ -49,14 +71,10 @@ async def get_new_videos():
             video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
             if video_url not in sent_urls:
                 title = item["snippet"]["title"]
-                query = """
-                INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)
-                """
-                cursor.execute(
-                    query,
+                await run_sql(
+                    "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
                     (video_url, title, "new_video", "JARVIS"),
                 )
-                conn.commit()
                 video_urls.append(video_url)
         return video_urls
     except Exception as e:
