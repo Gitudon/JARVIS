@@ -6,7 +6,7 @@ import asyncio
 import os
 
 TOKEN = os.getenv("TOKEN")
-DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
+DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
 intent = discord.Intents.default()
