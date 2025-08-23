@@ -103,7 +103,7 @@ async def on_ready():
                 for buf_video in buf_videos:
                     await send_new_video(buf_video)
         except Exception as e:
-            print(f"Error in on_ready loop: {e}")
+            print(f"Error: {e}")
         await asyncio.sleep(900)
 
 
