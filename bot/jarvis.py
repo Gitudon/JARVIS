@@ -4,6 +4,7 @@ from googleapiclient.discovery import build
 import mysql.connector
 import asyncio
 import os
+import traceback
 
 TOKEN = os.getenv("TOKEN")
 DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
@@ -104,6 +105,7 @@ async def on_ready():
                     await send_new_video(buf_video)
         except Exception as e:
             print(f"Error: {e}")
+            traceback.print_exc()
         await asyncio.sleep(900)
 
 
