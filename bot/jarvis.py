@@ -97,10 +97,13 @@ async def test(ctx):
 async def on_ready():
     print("J.A.R.V.I.S. is ready!")
     while True:
-        buf_videos = await get_new_videos()
-        if buf_videos != "ERROR":
-            for buf_video in buf_videos:
-                await send_new_video(buf_video)
+        try:
+            buf_videos = await get_new_videos()
+            if buf_videos != "ERROR":
+                for buf_video in buf_videos:
+                    await send_new_video(buf_video)
+        except Exception as e:
+            print(f"Error in on_ready loop: {e}")
         await asyncio.sleep(900)
 
 
