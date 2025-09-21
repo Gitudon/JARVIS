@@ -13,6 +13,7 @@ YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
 intent = discord.Intents.default()
 intent.message_content = True
 client = commands.Bot(command_prefix="-", intents=intent)
+task = None
 
 
 # MySQLの接続設定
@@ -88,15 +89,7 @@ async def send_new_video(new_video):
     await channel.send(f"Sir, I have found a new video!\n\n{new_video}")
 
 
-@client.command()
-async def test(ctx):
-    if ctx.channel.id == DISCORD_CHANNEL_ID:
-        await ctx.send("J.A.R.V.I.S. is working!")
-
-
-@client.event
-async def on_ready():
-    print("J.A.R.V.I.S. is ready!")
+async def main():
     while True:
         try:
             buf_videos = await get_new_videos()
@@ -107,6 +100,20 @@ async def on_ready():
             print(f"Error: {e}")
             traceback.print_exc()
         await asyncio.sleep(900)
+
+
+@client.command()
+async def test(ctx):
+    if ctx.channel.id == DISCORD_CHANNEL_ID:
+        await ctx.send("J.A.R.V.I.S. is working!")
+
+
+@client.event
+async def on_ready():
+    global task
+    print("J.A.R.V.I.S. is ready!")
+    if task is None or task.done():
+        task = asyncio.create_task(main())
 
 
 client.run(TOKEN)
