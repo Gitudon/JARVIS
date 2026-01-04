@@ -1,10 +1,10 @@
+import os
+import asyncio
+import traceback
 import discord
 from discord.ext import commands
 from googleapiclient.discovery import build
-import mysql.connector
-import asyncio
-import os
-import traceback
+import aiomysql
 
 TOKEN = os.getenv("TOKEN")
 DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
@@ -17,32 +17,37 @@ task = None
 
 
 # MySQLの接続設定
-def get_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-    )
+class UseMySQL:
+    pool: aiomysql.Pool | None = None
 
+    @classmethod
+    async def init_pool(cls):
+        if cls.pool is None:
+            cls.pool = await aiomysql.create_pool(
+                host=os.getenv("DB_HOST"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                db=os.getenv("DB_NAME"),
+                autocommit=True,
+                minsize=1,
+                maxsize=5,
+            )
 
-async def run_sql(sql: str, params: tuple):
-    conn = get_connection()
-    cursor = conn.cursor(buffered=True)
-    if params != ():
-        cursor.execute(sql, params)
-    else:
-        cursor.execute(sql)
-    if sql.strip().upper().startswith("SELECT"):
-        result = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return result
-    else:
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return
+    @classmethod
+    async def close_pool(cls):
+        if cls.pool:
+            cls.pool.close()
+            await cls.pool.wait_closed()
+            cls.pool = None
+
+    @classmethod
+    async def run_sql(cls, sql: str, params: tuple = ()) -> list:
+        async with cls.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, params)
+                if sql.strip().upper().startswith("SELECT"):
+                    rows = await cur.fetchall()
+                    return [r[0] if isinstance(r, tuple) else r for r in rows]
 
 
 async def get_new_videos():
@@ -60,7 +65,7 @@ async def get_new_videos():
             .execute()
         )
         video_urls = []
-        sent_urls = await run_sql(
+        sent_urls = await UseMySQL.run_sql(
             "SELECT url FROM sent_urls WHERE service = 'JARVIS'",
             (),
         )
@@ -71,7 +76,7 @@ async def get_new_videos():
             video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
             if video_url not in sent_urls:
                 title = item["snippet"]["title"]
-                await run_sql(
+                await UseMySQL.run_sql(
                     "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
                     (video_url, title, "new_video", "JARVIS"),
                 )
@@ -111,6 +116,7 @@ async def test(ctx):
 @client.event
 async def on_ready():
     global task
+    await UseMySQL.init_pool()
     print("J.A.R.V.I.S. is ready!")
     if task is None or task.done():
         task = asyncio.create_task(main())
