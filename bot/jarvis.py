@@ -87,7 +87,7 @@ async def get_new_videos():
         return "ERROR"
 
 
-async def send_new_video(new_video):
+async def send_new_video(new_video: str):
     channel = client.get_channel(DISCORD_CHANNEL_ID)
     if new_video is None:
         return
@@ -108,7 +108,7 @@ async def main():
 
 
 @client.command()
-async def test(ctx):
+async def test(ctx: commands.Context):
     if ctx.channel.id == DISCORD_CHANNEL_ID:
         await ctx.send("J.A.R.V.I.S. is working!")
 
