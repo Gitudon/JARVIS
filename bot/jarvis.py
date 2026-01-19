@@ -89,7 +89,7 @@ async def get_new_videos():
 
 async def send_new_video(new_video: str):
     channel = client.get_channel(DISCORD_CHANNEL_ID)
-    if new_video is None:
+    if not new_video:
         return
     await channel.send(f"Sir, I have found a new video!\n\n{new_video}")
 
