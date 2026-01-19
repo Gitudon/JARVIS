@@ -65,16 +65,16 @@ async def get_new_videos():
             .execute()
         )
         video_urls = []
-        sent_urls = await UseMySQL.run_sql(
-            "SELECT url FROM sent_urls WHERE service = 'JARVIS'",
-            (),
-        )
-        for i in range(len(sent_urls)):
-            if type(sent_urls[i]) is tuple:
-                sent_urls[i] = sent_urls[i][0]
         for item in response["items"]:
             video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
-            if video_url not in sent_urls:
+            sent = (
+                await UseMySQL.run_sql(
+                    "SELECT url FROM sent_urls WHERE service = 'JARVIS' AND url = %s",
+                    (video_url,),
+                )
+                != []
+            )
+            if not sent:
                 title = item["snippet"]["title"]
                 await UseMySQL.run_sql(
                     "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
