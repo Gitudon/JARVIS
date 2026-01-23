@@ -74,13 +74,14 @@ async def get_new_videos():
                 )
                 != []
             )
-            if not sent:
-                title = item["snippet"]["title"]
-                await UseMySQL.run_sql(
-                    "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
-                    (video_url, title, "new_video", "JARVIS"),
-                )
-                video_urls.append(video_url)
+            if sent:
+                continue
+            title = item["snippet"]["title"]
+            await UseMySQL.run_sql(
+                "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
+                (video_url, title, "new_video", "JARVIS"),
+            )
+            video_urls.append(video_url)
         return video_urls
     except Exception as e:
         print(e)
