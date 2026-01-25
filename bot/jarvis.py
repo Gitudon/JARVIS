@@ -6,6 +6,7 @@ from discord.ext import commands
 from googleapiclient.discovery import build
 import aiomysql
 
+SERVICE_NAME = "JARVIS"
 TOKEN = os.getenv("TOKEN")
 DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -50,42 +51,58 @@ class UseMySQL:
                     return [r[0] if isinstance(r, tuple) else r for r in rows]
 
 
-async def get_new_videos():
-    try:
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-        response = (
-            youtube.search()
-            .list(
-                part="snippet",
-                channelId=YOUTUBE_CHANNEL_ID,
-                maxResults=5,
-                order="date",
-                type="video",
-            )
-            .execute()
+class Crawler:
+    @staticmethod
+    async def register_crawl(target_url: str, method: str):
+        await UseMySQL.run_sql(
+            "INSERT INTO crawls (target_url, method, service) VALUES (%s, %s, %s)",
+            (target_url, method, SERVICE_NAME),
         )
-        video_urls = []
-        for item in response["items"]:
-            video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
-            sent = (
-                await UseMySQL.run_sql(
-                    "SELECT url FROM sent_urls WHERE service = 'JARVIS' AND url = %s",
-                    (video_url,),
+
+    @staticmethod
+    async def get_new_videos():
+        try:
+            youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+            response = (
+                youtube.search()
+                .list(
+                    part="snippet",
+                    channelId=YOUTUBE_CHANNEL_ID,
+                    maxResults=5,
+                    order="date",
+                    type="video",
                 )
-                != []
+                .execute()
             )
-            if sent:
-                continue
-            title = item["snippet"]["title"]
-            await UseMySQL.run_sql(
-                "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
-                (video_url, title, "new_video", "JARVIS"),
+            if not response or "items" not in response:
+                return
+            target_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={YOUTUBE_CHANNEL_ID}&maxResults=5&order=date&type=video"
+            await Crawler.register_crawl(
+                target_url,
+                "YouTube_Data_API",
             )
-            video_urls.append(video_url)
-        return video_urls
-    except Exception as e:
-        print(e)
-        return "ERROR"
+            video_urls = []
+            for item in response["items"]:
+                video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
+                sent = (
+                    await UseMySQL.run_sql(
+                        "SELECT url FROM sent_urls WHERE service = %s AND url = %s",
+                        (SERVICE_NAME, video_url),
+                    )
+                    != []
+                )
+                if sent:
+                    continue
+                title = item["snippet"]["title"]
+                await UseMySQL.run_sql(
+                    "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
+                    (video_url, title, "new_video", SERVICE_NAME),
+                )
+                video_urls.append(video_url)
+            return video_urls
+        except Exception as e:
+            print(e)
+            return "ERROR"
 
 
 async def send_new_video(new_video: str):
@@ -98,7 +115,7 @@ async def send_new_video(new_video: str):
 async def main():
     while True:
         try:
-            buf_videos = await get_new_videos()
+            buf_videos = await Crawler.get_new_videos()
             if buf_videos != "ERROR":
                 for buf_video in buf_videos:
                     await send_new_video(buf_video)
