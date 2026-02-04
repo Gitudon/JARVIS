@@ -1,115 +1,20 @@
-import os
-import asyncio
-import traceback
-import discord
-from discord.ext import commands
-from googleapiclient.discovery import build
-import aiomysql
+from common import *
+from use_mysql import UseMySQL
+from crawler import *
 
-SERVICE_NAME = "JARVIS"
-TOKEN = os.getenv("TOKEN")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
 intent = discord.Intents.default()
 intent.message_content = True
 client = commands.Bot(command_prefix="-", intents=intent)
 task = None
 
 
-# MySQLの接続設定
-class UseMySQL:
-    pool: aiomysql.Pool | None = None
-
-    @classmethod
-    async def init_pool(cls):
-        if cls.pool is None:
-            cls.pool = await aiomysql.create_pool(
-                host=os.getenv("DB_HOST"),
-                user=os.getenv("DB_USER"),
-                password=os.getenv("DB_PASSWORD"),
-                db=os.getenv("DB_NAME"),
-                autocommit=True,
-                minsize=1,
-                maxsize=5,
-            )
-
-    @classmethod
-    async def close_pool(cls):
-        if cls.pool:
-            cls.pool.close()
-            await cls.pool.wait_closed()
-            cls.pool = None
-
-    @classmethod
-    async def run_sql(cls, sql: str, params: tuple = ()) -> list | None:
-        async with cls.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(sql, params)
-                if sql.strip().upper().startswith("SELECT"):
-                    rows = await cur.fetchall()
-                    return [r[0] if isinstance(r, tuple) else r for r in rows]
-
-
-class Crawler:
+class JARVIS:
     @staticmethod
-    async def register_crawl(target_url: str, method: str):
-        await UseMySQL.run_sql(
-            "INSERT INTO crawls (target_url, method, service) VALUES (%s, %s, %s)",
-            (target_url, method, SERVICE_NAME),
-        )
-
-    @staticmethod
-    async def get_new_videos():
-        try:
-            youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-            response = (
-                youtube.search()
-                .list(
-                    part="snippet",
-                    channelId=YOUTUBE_CHANNEL_ID,
-                    maxResults=5,
-                    order="date",
-                    type="video",
-                )
-                .execute()
-            )
-            if not response or "items" not in response:
-                return
-            target_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={YOUTUBE_CHANNEL_ID}&maxResults=5&order=date&type=video"
-            await Crawler.register_crawl(
-                target_url,
-                "YouTube_Data_API",
-            )
-            video_urls = []
-            for item in response["items"]:
-                video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
-                sent = (
-                    await UseMySQL.run_sql(
-                        "SELECT url FROM sent_urls WHERE service = %s AND url = %s",
-                        (SERVICE_NAME, video_url),
-                    )
-                    != []
-                )
-                if sent:
-                    continue
-                title = item["snippet"]["title"]
-                await UseMySQL.run_sql(
-                    "INSERT INTO sent_urls (url, title, category, service) VALUES (%s,  %s, %s, %s)",
-                    (video_url, title, "new_video", SERVICE_NAME),
-                )
-                video_urls.append(video_url)
-            return video_urls
-        except Exception as e:
-            print(e)
-            return "ERROR"
-
-
-async def send_new_video(new_video: str):
-    channel = client.get_channel(DISCORD_CHANNEL_ID)
-    if not new_video:
-        return
-    await channel.send(f"Sir, I have found a new video!\n\n{new_video}")
+    async def send_new_video(new_video: str):
+        channel = client.get_channel(DISCORD_CHANNEL_ID)
+        if not new_video:
+            return
+        await channel.send(f"Sir, I have found a new video!\n\n{new_video}")
 
 
 async def main():
@@ -118,7 +23,7 @@ async def main():
             buf_videos = await Crawler.get_new_videos()
             if buf_videos != "ERROR":
                 for buf_video in buf_videos:
-                    await send_new_video(buf_video)
+                    await JARVIS.send_new_video(buf_video)
         except Exception as e:
             print(f"Error: {e}")
             traceback.print_exc()
