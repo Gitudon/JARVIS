@@ -32,3 +32,4 @@ class UseMySQL:
                 if sql.strip().upper().startswith("SELECT"):
                     rows = await cur.fetchall()
                     return [r[0] if isinstance(r, tuple) else r for r in rows]
+                return None
