@@ -1,6 +1,6 @@
 from common import *
 from use_mysql import UseMySQL
-from crawler import *
+from crawler import Crawler
 
 intent = discord.Intents.default()
 intent.message_content = True
