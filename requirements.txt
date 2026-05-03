@@ -1,5 +1,7 @@
-py-cord
-discord.py
-google-api-python-client
 aiomysql
 cryptography
+davey
+discord.py
+google-api-python-client
+py-cord
+pynacl

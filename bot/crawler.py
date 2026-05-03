@@ -52,5 +52,5 @@ class Crawler:
                 video_urls.append(video_url)
             return video_urls
         except Exception as e:
-            print(e)
+            await write_log_message(f"{e}", "ERROR")
             return "ERROR"

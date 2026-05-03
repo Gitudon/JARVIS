@@ -1,6 +1,6 @@
 from common import *
-from use_mysql import UseMySQL
 from crawler import Crawler
+from use_mysql import UseMySQL
 
 intent = discord.Intents.default()
 intent.message_content = True
@@ -25,7 +25,7 @@ async def main():
                 for buf_video in buf_videos:
                     await JARVIS.send_new_video(buf_video)
         except Exception as e:
-            print(f"Error: {e}")
+            await write_log_message(f"Error: {e}")
             traceback.print_exc()
         await asyncio.sleep(900)
 
@@ -40,7 +40,7 @@ async def test(ctx: commands.Context):
 async def on_ready():
     global task
     await UseMySQL.init_pool()
-    print("J.A.R.V.I.S. is ready!")
+    await write_log_message("Bot is ready!", "INFO")
     if task is None or task.done():
         task = asyncio.create_task(main())
 
