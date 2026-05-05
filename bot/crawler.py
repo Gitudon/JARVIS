@@ -45,7 +45,9 @@ class Crawler:
                 target_url,
                 "YouTube_Data_API",
             )
-            await cls.register_api_status_code(response.status, "YouTube_Data_API")
+            print(response)
+            status_code = response.status
+            await cls.register_api_status_code(status_code, "YouTube_Data_API")
             video_urls = []
             for item in response["items"]:
                 video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
