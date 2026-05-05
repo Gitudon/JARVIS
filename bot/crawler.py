@@ -38,16 +38,15 @@ class Crawler:
                 )
                 .execute()
             )
-            if not response or "items" not in response:
-                return
             target_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={YOUTUBE_CHANNEL_ID}&maxResults=5&order=date&type=video"
             await cls.register_crawl(
                 target_url,
                 "YouTube_Data_API",
             )
-            print(response)
-            status_code = response.status
-            await cls.register_api_status_code(status_code, "YouTube_Data_API")
+            if not response or "items" not in response:
+                await cls.register_api_status_code(400, "YouTube_Data_API")
+                return
+            await cls.register_api_status_code(200, "YouTube_Data_API")
             video_urls = []
             for item in response["items"]:
                 video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
