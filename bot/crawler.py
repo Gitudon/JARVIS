@@ -11,7 +11,20 @@ class Crawler:
         )
 
     @staticmethod
-    async def get_new_videos():
+    async def register_api_status_code(status_code: int, method: str):
+        latest_crawl_id = await UseMySQL.run_sql(
+            "SELECT id FROM crawls WHERE method = %s AND service = %s ORDER BY created_at DESC LIMIT 1",
+            (method, SERVICE_NAME),
+        )
+        if not latest_crawl_id:
+            return
+        await UseMySQL.run_sql(
+            "INSERT INTO api_status_codes (crawl_id, status_code) VALUES (%s, %s)",
+            (latest_crawl_id[0], status_code),
+        )
+
+    @classmethod
+    async def get_new_videos(cls):
         try:
             youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
             response = (
@@ -28,10 +41,11 @@ class Crawler:
             if not response or "items" not in response:
                 return
             target_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={YOUTUBE_CHANNEL_ID}&maxResults=5&order=date&type=video"
-            await Crawler.register_crawl(
+            await cls.register_crawl(
                 target_url,
                 "YouTube_Data_API",
             )
+            await cls.register_api_status_code(response.status, "YouTube_Data_API")
             video_urls = []
             for item in response["items"]:
                 video_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"

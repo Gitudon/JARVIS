@@ -25,7 +25,7 @@ async def main():
                 for buf_video in buf_videos:
                     await JARVIS.send_new_video(buf_video)
         except Exception as e:
-            await write_log_message(f"Error: {e}")
+            await write_log_message(f"{e}")
             traceback.print_exc()
         await asyncio.sleep(900)
 
